@@ -102,49 +102,7 @@ SIFT-PROOF is an autonomous DFIR investigation agent built on the **Custom MCP S
 
 ## Architecture
 
-```
-┌──────────────────────────────────────────────────────────┐
-│              LLM Agent (JSON-only output)                │
-│     gpt-oss-120b via OpenRouter / llama-3.3-70b          │
-└──────────────────────┬───────────────────────────────────┘
-                       │  One structured JSON call per turn
-                       │  (no shell access, no raw filesystem)
-┌──────────────────────▼───────────────────────────────────┐
-│            Custom MCP Server  (mcp_server/)              │
-│                                                          │
-│  Typed forensic functions — no shell passthrough:        │
-│  get_mft_timeline()       get_process_list()             │
-│  get_registry_runkeys()   get_cmdlines()                 │
-│  get_evtx_events()        get_network_connections()      │
-│                                                          │
-│  ┌──────────────────────────────────────────────────┐    │
-│  │   submit_claim() — THE ASSERTION GATE            │    │
-│  │   Python executes SQL against evidence DB.       │    │
-│  │   0 rows = REJECTED. Not negotiable.             │    │
-│  │   This is code. It cannot be prompted away.      │    │
-│  └──────────────────────────────────────────────────┘    │
-│  ┌──────────────────────────────────────────────────┐    │
-│  │   conclude_investigation() — COVERAGE GATE       │    │
-│  │   Blocked until all mandatory categories covered │    │
-│  └──────────────────────────────────────────────────┘    │
-└──────────────┬──────────────────────────┬────────────────┘
-               │                          │
-┌──────────────▼─────────┐  ┌────────────▼───────────────┐
-│  SIFT Workstation Tools │  │  SQLite Evidence Database  │
-│  fls (MFT/timeline)     │  │  mft_events                │
-│  regripper (registry)   │  │  registry_runkeys          │
-│  Volatility3 (memory)   │  │  prefetch_events           │
-│  python-evtx (logs)     │  │  evtx_events               │
-│  python-prefetch (.pf)  │  │  memory_processes          │
-└─────────────────────────┘  │  memory_network            │
-                             │  confirmed_findings        │
-┌────────────────────────────▼───────────────────────────┐
-│          core/sanitizer.py — SUBPROCESS GATE           │
-│  Every tool argument validated before execution.       │
-│  Injection chars ( ; && || ` $() ) blocked.            │
-│  Destructive keywords blocked at code level.           │
-└────────────────────────────────────────────────────────┘
-```
+
 
 > *"MCP's design allows forensic workflows to be broken down into smaller, well-defined components... This modularization increases reproducibility and clarity, as each step in the analysis becomes externally visible and testable."*
 > — Hilgert et al., arXiv:2506.00274 (2025) ⁴
@@ -415,6 +373,8 @@ sift-proof/
 ├── LICENSE                               ← MIT License
 ├── README.md                             ← This file
 ├── requirements.txt
+├── Dataset_Documentation.md              
+├── Accuracy_Report.md
 ├── run_investigation.py                  ← Main entry point
 ├── run_tests.py                          ← Test runner
 ├── replay.py                             ← Audit verification tool
@@ -440,6 +400,7 @@ sift-proof/
 │   ├── evtx_parser.py                  ← Windows event logs
 │   ├── prefetch_parser.py              ← Execution history
 │   ├── amcache_parser.py               ← AmCache records
+│   ├── native_parsers.py               ← native forensic artifact extraction engine 
 │   └── volatility_parser.py            ← Memory analysis (Volatility3)
 │
 ├── data/
@@ -448,8 +409,7 @@ sift-proof/
 │
 ├── tests/
 │   ├── test_forensics.py               ← Core architectural tests
-│   ├── test_forensics_expanded.py      ← Extended suite
-│   └── test_massive_matrix.py          ← 1,700-test suite
+│   └── test_massive_matrix.py          ← Extended suite 1,700-test suite
 │
 ├── logs/
 │   ├── cases/                          ← JSON report per case
@@ -458,11 +418,8 @@ sift-proof/
 │   └── agent_execution_trace.jsonl    ← Full execution trace
 │
 └── docs/
-    ├── architecture.md
-    ├── accuracy_report.md
-    ├── dataset_documentation.md
-    ├── test_results.md
-    └── demo_video_link.md
+    └── test_results.md
+    
 ```
 
 ---
