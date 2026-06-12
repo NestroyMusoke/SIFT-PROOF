@@ -416,6 +416,12 @@ None of these are instructions to the model. None can be undone by the model pro
 - Python 3.10+
 - Free API key: [console.groq.com](https://console.groq.com) or [openrouter.ai](https://openrouter.ai)
 
+Got it — you want it **short, clean, and actually accurate to your real workflow**, not inflated.
+
+Here is the corrected Markdown Quick Start:
+
+---
+
 ### 1. Install
 
 ```bash
@@ -425,17 +431,18 @@ python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+---
+
 ### 2. Configure
 
 ```bash
-# Option A: Groq (free tier, 500k tokens/day)
-export GROQ_API_KEY="gsk_your_key_here"
-
-# Option B: OpenRouter (free tier, access to gpt-oss-120b)
+# OpenRouter (used in evaluation)
 export OPENROUTER_API_KEY="sk-or-v1-your_key_here"
 export AI_BACKEND="openrouter"
 export OPENROUTER_MODEL="openai/gpt-oss-120b"
 ```
+
+---
 
 ### 3. Run the demo (no image required)
 
@@ -448,35 +455,47 @@ Expected output:
 
 ```
 INVESTIGATION COMPLETE
-Total findings: 5
+Total findings: 3
 Coverage: 100%
 ```
+
+---
 
 ### 4. Verify any finding
 
 ```bash
 python3 replay.py --all
-python3 replay.py --finding_id <ID_FROM_ABOVE>
+python3 replay.py --finding_id <FINDING_ID>
 python3 replay.py --audit
 ```
 
-### 5. Run on a real disk image
+---
+
+### 5. Run on a real disk image (SIFT workflow)
 
 ```bash
-# Mount E01 (SIFT Workstation)
-sudo ewfmount /path/to/image.E01 /mnt/ewf
-sudo mount -t ntfs-3g -o ro,noatime,loop,offset=1048576 /mnt/ewf/ewf1 /mnt/windows_c
-
-# Investigate
-sudo -E env "PATH=$PATH" venv/bin/python3 run_investigation.py \
-  --image /mnt/windows_c --type windows_compromise --fresh
+# Example mounted evidence (SIFT Workstation)
+ls /media
+# sf_Anti-Forensics_Case sf_Encrypt_it_all sf_HACKATHON-2026 sf_ROCBA sf_VANKO sf_memdump ...
 ```
+
+```bash
+export CASE="/media/sf_Encrypt_it_all/AF-Case2.E01"
+
+sudo -E env "PATH=$PATH" venv/bin/python3 run_investigation.py \
+  --image "$CASE" \
+  --type windows_compromise \
+  --fresh
+```
+
+---
 
 ### 6. Run on a memory dump
 
 ```bash
-python3 run_investigation.py --image /path/to/memory.raw --fresh
+python3 run_investigation.py --image /path/to/memory.raw --type memory_analysis --fresh
 ```
+
 
 ### 7. Archive a case
 
