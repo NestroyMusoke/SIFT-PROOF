@@ -76,8 +76,8 @@ The innovation in SIFT-PROOF is not that these ideas are new in the literature. 
 | 5 | Text description of features | ✅ | [What SIFT-PROOF Does](#what-sift-proof-does) |
 | 6 | Demonstration video | ✅ | [`docs/demo_video_link.md`](docs/demo_video_link.md) |
 | 7 | Architecture diagram | ✅ | [`docs/architecture.md`](docs/architecture.md) |
-| 8 | Evidence dataset documentation | ✅ | [`docs/dataset_documentation.md`](docs/dataset_documentation.md) |
-| 9 | Accuracy report | ✅ | [`docs/accuracy_report.md`](docs/accuracy_report.md) |
+| 8 | Evidence dataset documentation | ✅ | [`Dataset_Documentation.md`](Dataset_Documentation.md) |
+| 9 | Accuracy report | ✅ | [`Accuracy_Report.md`](Accuracy_Report.md) |
 | 10 | Agent execution logs | ✅ | [`logs/cases/`](logs/cases/) — 7 case reports |
 
 ---
