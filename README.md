@@ -75,7 +75,7 @@ The innovation in SIFT-PROOF is not that these ideas are new in the literature. 
 | 4 | Step-by-step try-it-out instructions | ✅ | [Quick Start](#-quick-start-3-minutes) |
 | 5 | Text description of features | ✅ | [What SIFT-PROOF Does](#what-sift-proof-does) |
 | 6 | Demonstration video | ✅ | [`docs/demo_video_link.md`](docs/demo_video_link.md) |
-| 7 | Architecture diagram | ✅ | [`docs/architecture.md`](docs/architecture.md) |
+| 7 | Architecture diagram | ✅ | [`SIFT-PROOF.png`](SIFT-PROOF.png) |
 | 8 | Evidence dataset documentation | ✅ | [`Dataset_Documentation.md`](Dataset_Documentation.md) |
 | 9 | Accuracy report | ✅ | [`Accuracy_Report.md`](Accuracy_Report.md) |
 | 10 | Agent execution logs | ✅ | [`logs/cases/`](logs/cases/) — 7 case reports |
@@ -211,13 +211,13 @@ No single-image analysis tool reaches this conclusion. It requires holding both 
 
 | Case | Image | Finding | Technique |
 |------|-------|---------|-----------|
-| 1 | Synthetic | Timestomping — deletion before execution | Temporal contradiction |
-| 2 | NFury Win7 E01 | `GoogleUpdate.exe` HKCU Run key | T1547.001 |
-| 3 | TDungan XP E01 | `a.exe` in Temp + prefetch proof | T1036.005 |
-| **4** | **Ali Hadi #9 E01** | **0 findings — correctly** | **Precision gate** |
-| 5 | Rocba Memory RAW | svchost.exe — 190 C2 connections | T1041 |
-| 6 | Ali Hadi #1 E01 | `phpinfo.php` in htdocs | T1505.003 |
-| **7** | **Rocba Disk E01** | **0 findings — correctly** | **Fileless pattern** |
+| 1 | Synthetic | Temporal contradiction (deletion before execution evidence) — anti-forensics signal | T1070.006 |
+| 2 | NFury Win7 E01 | `GoogleUpdate.exe` HKCU Run key persistence | T1547.001 |
+| 3 | TDungan XP E01 | `a.exe` in Temp + Prefetch execution confirmation (masquerading) | T1036.005 / T1204.002 |
+| **4** | **Ali Hadi #9 E01** | **0 findings — correct (no malicious indicators in encryption activity)** | **Precision gate** |
+| 5 | Rocba Memory RAW | `svchost.exe` — 190 outbound external connections (possible C2 / exfiltration behavior) | T1041 |
+| 6 | Ali Hadi #1 E01 | `phpinfo.php` in htdocs (web server exposure / potential info disclosure) | T1505.003 |
+| **7** | **Rocba Disk E01** | **0 findings — disk-only view; supports fileless execution model (memory correlation required)** | **Cross-layer inference** |
 
 **Hallucination rate across all 7 cases: 0.0%**
 **False positive rate: 0.0%**
@@ -374,6 +374,7 @@ sift-proof/
 ├── LICENSE                               ← MIT License
 ├── README.md                             ← This file
 ├── requirements.txt
+├── SIFT-PROOF.png                        ← Architecture Diagram 
 ├── Dataset_Documentation.md              
 ├── Accuracy_Report.md
 ├── run_investigation.py                  ← Main entry point
