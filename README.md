@@ -102,6 +102,7 @@ SIFT-PROOF is an autonomous DFIR investigation agent built on the **Custom MCP S
 
 ## Architecture
 
+[![SIFT-PROOF Architecture](SIFT-PROOF.png)](SIFT-PROOF.png)
 
 
 > *"MCP's design allows forensic workflows to be broken down into smaller, well-defined components... This modularization increases reproducibility and clarity, as each step in the analysis becomes externally visible and testable."*
