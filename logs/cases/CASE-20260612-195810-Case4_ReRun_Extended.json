@@ -1,0 +1,92 @@
+{
+  "case_id": "CASE-20260612-195810",
+  "case_name": "Case4_ReRun_Extended",
+  "image_type": "E01",
+  "description": "Full Filesystem Analysis After MFT Record Limit Expansion",
+  "analyzed_at": "2026-06-12T19:58:10.716960+00:00",
+  "tool": "SIFT-PROOF v1.0",
+  "evidence_integrity": {
+    "method": "Architectural \u2014 SQL assertion gate",
+    "hallucination_rate": "0.0% (confirmed findings require SQL proof)",
+    "false_positive_test": "PASSED \u2014 false claims rejected by assertion engine",
+    "write_block": "ENFORCED \u2014 execute_safe_query blocks INSERT/UPDATE/DELETE",
+    "spoliation_test": "PASSED",
+    "sha256_chain_present": true
+  },
+  "accuracy_metrics": {
+    "coverage_percentage": 100,
+    "artifact_categories_covered": [
+      "file_system_timeline",
+      "execution_artifacts",
+      "user_activity",
+      "persistence_mechanisms"
+    ],
+    "total_confirmed_findings": 3,
+    "total_inferred_findings": 0,
+    "false_positives": 0,
+    "hallucinated_claims": 0,
+    "mitre_techniques_mapped": [
+      "T1083",
+      "T1057",
+      "T1105"
+    ]
+  },
+  "artifact_inventory": {
+    "file_system_timeline": {
+      "table": "mft_events",
+      "rows_extracted": 125073
+    },
+    "execution_artifacts": {
+      "table": "prefetch_events",
+      "rows_extracted": 184
+    },
+    "user_activity": {
+      "table": "evtx_events",
+      "rows_extracted": 19
+    },
+    "persistence_mechanisms": {
+      "table": "registry_runkeys",
+      "rows_extracted": 6
+    }
+  },
+  "confirmed_findings": [
+    {
+      "finding_id": "8e1f788c",
+      "claim": "7z installer observed in user Downloads directory",
+      "evidence_table": "mft_events",
+      "sql_executed": "SELECT * FROM mft_events WHERE filename = '7z2201-x64.exe' AND full_path LIKE '%Downloads%'",
+      "rows_proved": 1,
+      "confidence_tier": "CONFIRMED",
+      "mitre_technique": "T1105",
+      "sha256_chain": "6fd4a714ef44ed09c028fd086a948fc02dbd61dc6579e5029c5945efd96b6aef",
+      "replay_command": "python3 replay.py --finding_id 8e1f788c"
+    },
+    {
+      "finding_id": "86b58812",
+      "claim": "File system timeline collected via MFT",
+      "evidence_table": "mft_events",
+      "sql_executed": "SELECT * FROM mft_events WHERE 1=1",
+      "rows_proved": 125073,
+      "confidence_tier": "CONFIRMED",
+      "mitre_technique": "T1083",
+      "sha256_chain": "6fd4a714ef44ed09c028fd086a948fc02dbd61dc6579e5029c5945efd96b6aef",
+      "replay_command": "python3 replay.py --finding_id 86b58812"
+    },
+    {
+      "finding_id": "d109c695",
+      "claim": "Prefetch execution signatures collected",
+      "evidence_table": "prefetch_events",
+      "sql_executed": "SELECT * FROM prefetch_events WHERE 1=1",
+      "rows_proved": 184,
+      "confidence_tier": "CONFIRMED",
+      "mitre_technique": "T1057",
+      "sha256_chain": "14978bcbde40f3f4171631561c508dc2d23f1e4afb0d1337ac40dc418ac3e10d",
+      "replay_command": "python3 replay.py --finding_id d109c695"
+    }
+  ],
+  "replay_instructions": {
+    "all_findings": "python3 replay.py --all",
+    "audit_trail": "python3 replay.py --audit",
+    "single": "python3 replay.py --finding_id <ID>"
+  }
+}

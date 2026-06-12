@@ -62,7 +62,16 @@
       "coverage": "100%",
       "file": "CASE-20260608-091006-Case-7--Fred-Rocba-Insider-Threat-Invest.json",
       "analyzed_at": "2026-06-08T09:10:06.264364+00:00"
+    },
+    {
+      "case_id": "CASE-20260612-195810",
+      "case_name": "Case4_ReRun_Extended",
+      "image_type": "E01",
+      "findings": 3,
+      "coverage": "100%",
+      "file": "CASE-20260612-195810-Case4_ReRun_Extended.json",
+      "analyzed_at": "2026-06-12T19:58:10.716960+00:00"
     }
   ],
-  "total_cases": 7
+  "total_cases": 8
 }

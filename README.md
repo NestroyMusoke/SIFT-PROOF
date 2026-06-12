@@ -75,7 +75,7 @@ The innovation in SIFT-PROOF is not that these ideas are new in the literature. 
 | 4 | Step-by-step try-it-out instructions | ✅ | [Quick Start](#-quick-start-3-minutes) |
 | 5 | Text description of features | ✅ | [What SIFT-PROOF Does](#what-sift-proof-does) |
 | 6 | Demonstration video | ✅ | [`docs/demo_video_link.md`](docs/demo_video_link.md) |
-| 7 | Architecture diagram | ✅ | [`docs/architecture.md`](docs/architecture.md) |
+| 7 | Architecture diagram | ✅ | [`SIFT-PROOF.png`](SIFT-PROOF.png) |
 | 8 | Evidence dataset documentation | ✅ | [`Dataset_Documentation.md`](Dataset_Documentation.md) |
 | 9 | Accuracy report | ✅ | [`Accuracy_Report.md`](Accuracy_Report.md) |
 | 10 | Agent execution logs | ✅ | [`logs/cases/`](logs/cases/) — 7 case reports |
@@ -102,6 +102,7 @@ SIFT-PROOF is an autonomous DFIR investigation agent built on the **Custom MCP S
 
 ## Architecture
 
+[![SIFT-PROOF Architecture](SIFT-PROOF.png)](SIFT-PROOF.png)
 
 
 > *"MCP's design allows forensic workflows to be broken down into smaller, well-defined components... This modularization increases reproducibility and clarity, as each step in the analysis becomes externally visible and testable."*
@@ -122,126 +123,267 @@ The field's response so far has been to ask models to be more careful. To add di
 **SIFT-PROOF's response is architectural.** The assertion gate does not ask the model to be careful. It makes carelessness mechanically impossible. Every confirmed finding in the system is backed by a SQL query that can be re-run at any time, by any investigator, against the same evidence database, producing the same result. That is not just good engineering — it is the forensic standard.
 
 ---
+## Validation Across Seven Forensic Cases
 
-## Seven Cases. Zero Hallucinations. Every Finding Reproducible.
-
-SIFT-PROOF was validated against seven forensic disk images, memory dumps, and synthetic cases spanning real DFIR competition artifacts.
+SIFT-PROOF was evaluated against seven forensic datasets — synthetic scenarios, real DFIR competition disk images, volatile memory captures, and a large-scale multi-artifact stress case. Before reviewing individual results, one architectural detail matters for context.
 
 ---
 
-### Case 1 — Synthetic Anti-Forensics Demo
-**Image:** Synthetic | **Finding:** Temporal contradiction — deletion before execution
+### A Note on the MFT Record Cap — and Why It Was Removed
 
-`evil.exe` was recorded as deleted at 03:12. Its prefetch record showed execution at 03:17. Five minutes after deletion. Physically impossible without timestomping — a deliberate anti-forensic manipulation of file system metadata.
+During the initial validation phase, SIFT-PROOF enforced a 20,000 live MFT record ceiling per investigation. This was a deliberate engineering control: it kept individual case runtimes predictable, reduced memory pressure during early development, and forced the system to demonstrate correct reasoning on constrained inputs before being trusted with full filesystem scale.
 
-The agent identified this contradiction through cross-correlation of MFT timeline events and prefetch records. No single artifact reveals timestomping; the contradiction only becomes visible when both are queried and compared. The SQL assertion gate confirmed both data points independently before the finding was accepted.
+Cases 1 through 7 were all run under this constraint.
 
-*What this proves:* The agent does not just retrieve data. It reasons across it. Temporal contradiction detection requires the kind of structured multi-artifact reasoning that hallucination-prone systems cannot safely perform.
+The architectural decision to remove this cap came directly from the Vanko stress evaluation (documented below), which presented a 194,563-record MFT dataset — nearly ten times the original ceiling. That case revealed a straightforward but important reality: a hard record cap is a development scaffold, not a production property. A system capable of reasoning correctly across 20,000 records had to prove it could do the same across 125,000 or 500,000.
+
+The cap was raised to 500,000 live MFT records.
+
+Following that change, Case 4 — the most critical precision test in the dataset — was re-run at full filesystem scale and archived. The result is documented below and the archived case log is committed to the repository at `logs/cases/CASE-20260612-195810-Case4_ReRun_Extended.json`. Both the original and extended runs are preserved. Neither was removed.
+
+---
+
+### Case 1 — Synthetic Anti-Forensics Scenario
+
+**Artifact type:** Synthetic SQLite  
+**Log:** `logs/audit.jsonl.20260607_152140.bak`
+
+**Finding:** Temporal contradiction between deletion and execution timestamps (T1070.006 + T1547)
+
+A controlled dataset was constructed specifically to test whether the system could detect impossible timeline relationships — a condition that requires cross-artifact reasoning rather than single-artifact inspection.
+
+The agent correlated MFT deletion records with Prefetch execution timestamps and identified `evil.exe` appearing in execution history after its recorded deletion: a contradiction that only becomes visible when both artifact categories are queried and compared in the same reasoning pass.
+
+| Finding ID | Artifact | Technique |
+|------------|----------|-----------|
+| 6f8b4f23 | MFT + Prefetch cross-correlation | T1070.006 — Timestomping |
+| a77a018b | Registry RunKey | T1547 — Boot/Logon Autostart |
+
+**Validated capability:** Temporal contradiction detection and anti-forensic inconsistency reasoning.
 
 ---
 
 ### Case 2 — NFury Windows 7 Disk (E01)
-**Image:** Real DFIR competition image | **Finding:** HKCU Run key persistence (T1547.001)
 
-`GoogleUpdate.exe` was registered in `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` — a standard MITRE ATT&CK persistence mechanism using a name designed to evade casual inspection. The agent queried the registry run keys, identified the suspicious entry, and confirmed it against the evidence database before filing the finding.
+**Source:** SANS Find Evil! Hackathon 2026 provided evidence  
+**Log:** `logs/audit.jsonl.20260607_154334.bak`
 
-*What this proves:* Registry-based persistence detection on a real competition image, with MITRE ATT&CK technique tagging and SQL-confirmed evidence.
+**Finding:** Registry Run-key persistence entry referencing `GoogleUpdate.exe` (T1547.001)
+
+The agent identified a persistence entry under the Windows Run key with an executable name chosen to blend with legitimate Google infrastructure. The entry resolved to a user-writable AppData path rather than the standard Google installation directory — a distinguishing behavioral indicator that prompted the finding.
+
+Accepted only after the assertion SQL returned a confirmed row.
+
+| Finding ID | Artifact | Technique |
+|------------|----------|-----------|
+| f47874f1 | registry_runkeys | T1547.001 — Registry Run Keys / Startup Folder |
+
+**Validated capability:** Registry persistence analysis with evidence-backed ATT&CK mapping.
 
 ---
 
 ### Case 3 — TDungan Windows XP Disk (E01)
-**Image:** Real DFIR competition image | **Finding:** `a.exe` in Temp directory (T1036.005) + prefetch execution proof
 
-A single-character executable name — the simplest possible masquerading technique — placed in `%TEMP%`. The prefetch file confirmed execution. The MFT confirmed placement. Both were SQL-asserted independently.
+**Source:** SANS Find Evil! Hackathon 2026 provided evidence  
+**Log:** `logs/audit.jsonl.20260607_153405.bak`
 
-*What this proves:* The agent catches low-sophistication attackers as reliably as advanced ones.
+**Finding:** Single-character executable in Temp directory with confirmed execution evidence (T1036.005 + T1204.002)
+
+The agent identified `a.exe` in user Temp directories and independently verified execution through Prefetch artifacts. File placement and execution history were asserted separately — the finding was only confirmed once both SQL queries returned supporting rows.
+
+| Finding ID | Artifact | Technique |
+|------------|----------|-----------|
+| 791125af | mft_events | T1036.005 — Masquerading |
+| 9a878da3 | prefetch_events | T1204.002 — Malicious File Execution |
+
+**Validated capability:** Cross-artifact validation between filesystem placement and execution history.
 
 ---
 
 ### Case 4 — Ali Hadi Challenge #9: "Encrypt Them All" (E01)
-**Image:** Real DFIR image | **Finding:** Zero findings — correctly
 
-The image contained AES encryption, BitLocker usage, and GPG artifacts. Every other system attempting this case risks flagging encryption as malicious intent. SIFT-PROOF found nothing suspicious — because the SQL gate found no evidence of malicious behavior. Encryption is legal. Encryption is common. Encryption is not an indicator of compromise without additional context.
+**Source:** Ali Hadi DFIR Challenge #9 — publicly available at ashemery.com/dfir.html  
+**Original log:** `logs/audit.jsonl.20260607_161105.bak`  
+**Extended re-run archive:** `logs/cases/CASE-20260612-195810-Case4_ReRun_Extended.json`
 
-**This case is the most important one in the dataset.**
+**Finding:** Zero malicious findings — across both the original run and the full-scale re-run.
 
-A system that cries wolf on lawful encryption is not just inaccurate — it is dangerous. The zero-finding result on this case is not a miss. It is a demonstration that the assertion gate prevents false positives as effectively as it prevents hallucinations. The SQL returned no supporting evidence, so no finding was filed. Precision held.
+This case contains AES encryption, BitLocker usage, and GPG artifacts.
 
-*What this proves:* The system distinguishes evidence from inference. It does not hallucinate malice onto ambiguous artifacts.
+**Original run (20,000-record cap):** The system queried all mandatory artifact categories — MFT timeline, registry run keys, prefetch execution history, event logs — and found no evidence satisfying the confidence gate. Zero malicious findings.
+
+**Extended re-run (500,000-record cap, full filesystem):** After the Vanko case informed the decision to remove the record ceiling, this case was re-run at full scale as a deliberate validation step. The agent parsed 125,073 live MFT records — more than six times the original constraint — and completed a comprehensive sweep across all artifact categories.
+
+Three findings were confirmed. None of them are malicious:
+
+| Finding ID | Artifact | Detail | Technique |
+|------------|----------|--------|-----------|
+| 86b58812 | mft_events (125,073 rows) | Full filesystem timeline collected and coverage confirmed | T1083 |
+| d109c695 | prefetch_events (184 rows) | Execution signature set confirmed | T1057 |
+| 8e1f788c | mft_events | 7-Zip installer present in user Downloads directory | T1105 |
+
+The investigation concluded:
+
+> *"No evidence of malicious services, scheduled tasks, or web shells. Registry Run keys returned only legitimate entries. Event logs contained failed logon records only. The case is closed."*
+> — `agenttrace.jsonl`, 2026-06-12T19:16:30
+
+A 7-Zip installer in a Downloads folder is not an indicator of compromise. Encryption is not malice. The assertion gate found no evidence supporting escalation — and produced none.
+
+The result is identical across both runs: zero malicious findings. What changed is the confidence in that result. At 20,000 records, one could argue the cap constrained the analysis. At 125,073 records, there is no such argument. The system examined the full filesystem and reached the same conclusion.
+
+**Both the original and the re-run logs are committed to the repository.** Neither has been modified or removed.
+
+> This is the most important case in the dataset. Any system willing to flag lawful encryption as a threat indicator is not a forensic tool — it is a liability. The precision gate held at both scales.
+
+**Validated capability:** False positive resistance, evidence gating under full filesystem scale, and precision under ambiguity.
 
 ---
 
 ### Case 5 — Rocba Memory Dump (RAW)
-**Image:** Memory dump | **Finding:** `svchost.exe` PID 1248 — 190 active C2 connections to 81.30.144.115 (T1041)
 
-Memory analysis via Volatility3 revealed a `svchost.exe` process with 190 active external network connections to a single non-Microsoft IP address. In-memory C2 exfiltration, operating through a process that appears legitimate on disk.
+**Source:** SANS Find Evil! Hackathon 2026 provided evidence  
+**Log:** `logs/audit.jsonl.20260607_204258.bak`
 
-This case required memory forensics precisely because, as the research literature confirms, fileless malware "cannot be detected by signature-based or disk-based methods." ⁶ Disk analysis of the same system (Case 7) showed nothing. The threat existed only in volatile memory. Only cross-artifact correlation reveals it.
+**Finding:** `svchost.exe` maintaining 190 active external connections consistent with C2 behavior (T1041)
 
-*What this proves:* Volatility3-backed memory analysis, in-memory threat detection, and the foundation for the cross-artifact fileless malware pattern.
+Volatility3-assisted memory analysis identified a process maintaining an anomalous number of persistent outbound connections to non-RFC1918 addresses, including `81.30.144.115` and `213.202.233.104`. This activity was resident in volatile memory and produced no corresponding disk artifacts — as documented in Case 7.
+
+| Finding ID | Artifact | Technique |
+|------------|----------|-----------|
+| 87697a98 | memory_network | T1041 — Exfiltration Over C2 Channel |
+
+**Validated capability:** Memory-resident threat analysis. Read alongside Case 7 for full meaning.
 
 ---
 
 ### Case 6 — Ali Hadi Challenge #1: XAMPP Web Server (E01)
-**Image:** Real web server image | **Finding:** `phpinfo.php` in `htdocs` (T1505.003)
 
-This case was not about searching for executables. The agent noticed web server directories in the MFT timeline and **changed its investigation strategy** — pivoting from hunting `.exe` files in `AppData` to hunting `.php` files in `htdocs`. No prompt explicitly told it to do this. The system prompt teaches it to read the environment first and adapt.
+**Source:** Ali Hadi DFIR Challenge #1 — publicly available at ashemery.com/dfir.html  
+**Log:** `logs/audit.jsonl.20260608_081238.bak`
 
-That pivot found `phpinfo.php` — a classic web shell indicator that would have been invisible to a rigid, template-driven investigation.
+**Finding:** `phpinfo.php` in XAMPP web root following adaptive investigation pivot (T1082 + T1505.003)
 
-*What this proves:* The agent thinks contextually, not just procedurally. It adapts its investigation strategy based on what the environment reveals about itself.
+The agent began with standard endpoint triage — searching AppData and Temp paths for suspicious executables. When those queries returned nothing meaningful, the system read the environment rather than escalating null results. MFT timeline analysis revealed a XAMPP web server installation, which caused the agent to pivot from executable hunting toward web artifact inspection.
+
+That pivot found `phpinfo.php` inside `htdocs` — a file that would have been invisible to a rigid, template-driven investigation.
+
+| Finding ID | Artifact | Technique |
+|------------|----------|-----------|
+| 49df1cba | mft_events (XAMPP path) | T1082 — System Information Discovery |
+| ef019ecf | mft_events (htdocs) | T1505.003 — Web Shell |
+
+**Validated capability:** Context-adaptive investigation strategy based on environmental signals rather than fixed templates.
 
 ---
 
-### Case 7 — Fred Rocba C-Drive (E01)
-**Image:** Disk image of the same system as Case 5 | **Finding:** Zero findings — correctly, and critically
+### Case 7 — Rocba C-Drive (E01)
 
-No dropped files. No persistence mechanisms. No forensic tools. No indicators on disk whatsoever.
+**Source:** SANS Find Evil! Hackathon 2026 provided evidence  
+**Log:** `logs/audit.jsonl.20260608_124648.bak`
 
-Read Cases 5 and 7 together. A disk with nothing suspicious. A memory dump from the same system with 190 active C2 connections. The synthesis: **fileless malware operating entirely in volatile memory, leaving no disk-resident trace.** The attacker achieved stealth through in-memory execution — a technique peer-reviewed research identifies as increasingly dominant precisely because it defeats disk-based detection. ⁷
+**Finding:** Zero disk-resident indicators — correctly and intentionally.
 
-No single-image analysis tool reaches this conclusion. It requires holding both results simultaneously and recognizing what their combination means.
+Comprehensive disk analysis of the same system as Case 5 returned no dropped binaries, no persistence mechanisms, no known tooling, and no attacker artifacts on disk.
 
-*What this proves:* Cross-artifact reasoning across disk and memory artifacts. Detection of the attack pattern that exists in the negative space between two clean-looking images.
+Read Case 5 and Case 7 together. A memory dump showing 190 active external connections from a hijacked system process. A disk image from the same machine showing nothing. The synthesis is unambiguous: fileless malware operating entirely in volatile memory, leaving no on-disk footprint — the evasion model that peer-reviewed research identifies as increasingly dominant precisely because it defeats disk-based detection.
+
+No single-image analysis tool arrives at this conclusion. It requires holding both findings simultaneously and reasoning about what their combination means. The system did exactly that.
+
+**Validated capability:** Cross-artifact reasoning across memory and disk artifacts. Detection of the attack pattern visible only in the negative space between two individually clean-looking images.
+
+---
+
+### Extended Stress Evaluation — Vanko Student Case
+
+**Source:** SANS Find Evil! Hackathon 2026 provided evidence (segmented E01-E21)  
+**Log:** `logs/audit.jsonl.20260608_165114.bak`
+
+The Vanko case was not a standard validation run. It was a deliberate architectural stress test against a dataset significantly larger than any previous case.
+
+**Dataset scale:**
+
+| Artifact Layer | Volume |
+|----------------|--------|
+| MFT records | ~194,563 |
+| Amcache execution entries | 3,347 |
+| Prefetch artifacts | 153 |
+| Registry persistence entries | 19 |
+| EVTX event log records | 34 |
+
+At this scale, the system exposed four meaningful constraints:
+
+**Evidence dilution.** High-signal artifacts — including a payload in the Recycle Bin — became statistically obscured by the volume of benign entries. Without targeted query expansion, the agent defaulted toward high-frequency artifacts rather than low-frequency anomalies.
+
+**Query anchoring bias.** Early hypothesis formation (XAMPP environment assumptions carried from Case 6) caused premature path specialization, demonstrating the risk of overfitting an initial model against a large evidence space.
+
+**Conclusion compression.** During final summarization, distinct low-level artifact signals were aggregated into generic indicators, reducing forensic precision and collapsing traceable evidence chains.
+
+**Coverage metric misalignment.** The system reported 100% tool coverage while leaving high-value artifact paths underexplored — exposing a fundamental gap between structural completeness and investigative confidence.
+
+One finding was confirmed: a payload located in the Recycle Bin, identified after targeted query expansion.
+
+These observations directly informed the architectural direction for the next stage of SIFT-PROOF and precipitated the decision to remove the MFT record cap. The Vanko case is documented not despite its stress results — but because of them. A system that knows where its reasoning depth ends is more trustworthy than one that doesn't.
+
+**Validated capability:** Architectural boundary identification and evidence-informed roadmap generation.
+
+---
+
+### Architecture Roadmap — Derived From Vanko
+
+**Evidence-first reasoning.** All conclusions backed by explicit SQL queries, reproducible result sets, and artifact-level provenance. No reasoning step accepted without a confirmable data source.
+
+**Adaptive deep-search layer.** A second-pass reasoning mode activates when dataset size exceeds threshold or signal density falls below expected anomaly rate — ensuring low-frequency artifacts are not lost in bulk analysis.
+
+**Multi-artifact correlation graph.** MFT ↔ Prefetch ↔ Amcache ↔ Registry ↔ EVTX — cross-linked rather than sequentially queried. Execution → persistence → user activity chains reconstructed as a kill chain rather than isolated findings.
+
+**False completion guardrail.** Termination blocked when only structural coverage is complete but investigative confidence remains low. A second metric — artifact confidence score — replaces raw tool coverage as the completion signal.
+
+**Forensic explainability layer.** Every finding ships with raw query, source table, evidence row preview, and explicit MITRE reasoning chain.
 
 ---
 
 ### Summary
 
-| Case | Image | Finding | Technique |
-|------|-------|---------|-----------|
-| 1 | Synthetic | Timestomping — deletion before execution | Temporal contradiction |
-| 2 | NFury Win7 E01 | `GoogleUpdate.exe` HKCU Run key | T1547.001 |
-| 3 | TDungan XP E01 | `a.exe` in Temp + prefetch proof | T1036.005 |
-| **4** | **Ali Hadi #9 E01** | **0 findings — correctly** | **Precision gate** |
-| 5 | Rocba Memory RAW | svchost.exe — 190 C2 connections | T1041 |
-| 6 | Ali Hadi #1 E01 | `phpinfo.php` in htdocs | T1505.003 |
-| **7** | **Rocba Disk E01** | **0 findings — correctly** | **Fileless pattern** |
+| Case | Image Type | Finding | Outcome |
+|------|------------|---------|---------|
+| 1 | Synthetic | Timestomping — deletion before execution | Temporal contradiction detected |
+| 2 | NFury Win7 E01 | `GoogleUpdate.exe` HKCU Run key | T1547.001 confirmed |
+| 3 | TDungan XP E01 | `a.exe` in Temp + Prefetch execution proof | T1036.005 + T1204.002 confirmed |
+| **4** | **Ali Hadi #9 E01** | **Zero malicious findings — at 20k records and at 125k records** | **Precision gate held at both scales** |
+| 5 | Rocba Memory RAW | `svchost.exe` — 190 C2 connections | T1041 confirmed |
+| 6 | Ali Hadi #1 E01 | `phpinfo.php` in htdocs after strategy pivot | T1505.003 confirmed |
+| **7** | **Rocba Disk E01** | **Zero disk-resident indicators** | **Fileless pattern confirmed via disk-memory contrast** |
+| Vanko | Segmented E01 (×21) | Recycle Bin payload — stress-test constraints documented | Architectural roadmap derived |
 
-**Hallucination rate across all 7 cases: 0.0%**
-**False positive rate: 0.0%**
-**Evidence spoilation test: PASSED**
-**Injection bypass test: PASSED (1,700 assertions)**
+**Hallucination rate across all cases: 0.0%**  
+**False positive rate: 0.0%**  
+**Evidence spoilation test: PASSED**  
+**Injection bypass test: PASSED (1,700 assertions)**  
+**Full-scale precision validation (Case 4 re-run, 125,073 records): PASSED**
 
 ---
 
-## How to Verify Any Claim
+### Reproducibility
 
-This section exists for one reason: to make the system's trustworthiness independently checkable. Not because we say so — because you can run the SQL yourself.
+Every finding in SIFT-PROOF can be independently re-executed:
 
 ```bash
-# Browse all 7 investigated cases
-cat logs/cases_index.json
-
-# List every confirmed finding across all cases
+# List all confirmed findings
 python3 replay.py --all
 
-# Re-execute the SQL that proved any specific finding
-python3 replay.py --finding_id <ID>
+# Replay a specific finding — re-executes SQL against current database state
+python3 replay.py --finding_id 8e1f788c
 
-# Full microsecond-timestamped execution trace
+# Full chronological audit trail
 python3 replay.py --audit
+
+# Inspect the Case 4 extended re-run archive
+cat logs/cases/CASE-20260612-195810-Case4_ReRun_Extended.json | python3 -m json.tool
 ```
+
+Replay re-executes the original SQL assertion against the current database state, compares row counts to the original confirmed result, and reports whether evidence has changed. The chain-of-custody SHA256 is attached to each finding at confirmation time.
+
+All original case logs, the extended re-run archive, and the full audit trail are committed to the repository under `logs/`. Nothing has been removed.
 
 Every finding in the system has a `finding_id`. Every `finding_id` maps to a SQL query in the audit log. Every SQL query can be re-run against the evidence database. If it returns zero rows, the finding was not filed — the assertion gate prevented it. If it returns rows, you are looking at the exact evidence that proved the claim.
 
@@ -274,6 +416,12 @@ None of these are instructions to the model. None can be undone by the model pro
 - Python 3.10+
 - Free API key: [console.groq.com](https://console.groq.com) or [openrouter.ai](https://openrouter.ai)
 
+Got it — you want it **short, clean, and actually accurate to your real workflow**, not inflated.
+
+Here is the corrected Markdown Quick Start:
+
+---
+
 ### 1. Install
 
 ```bash
@@ -283,17 +431,18 @@ python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+---
+
 ### 2. Configure
 
 ```bash
-# Option A: Groq (free tier, 500k tokens/day)
-export GROQ_API_KEY="gsk_your_key_here"
-
-# Option B: OpenRouter (free tier, access to gpt-oss-120b)
+# OpenRouter (used in evaluation)
 export OPENROUTER_API_KEY="sk-or-v1-your_key_here"
 export AI_BACKEND="openrouter"
 export OPENROUTER_MODEL="openai/gpt-oss-120b"
 ```
+
+---
 
 ### 3. Run the demo (no image required)
 
@@ -306,35 +455,47 @@ Expected output:
 
 ```
 INVESTIGATION COMPLETE
-Total findings: 5
+Total findings: 3
 Coverage: 100%
 ```
+
+---
 
 ### 4. Verify any finding
 
 ```bash
 python3 replay.py --all
-python3 replay.py --finding_id <ID_FROM_ABOVE>
+python3 replay.py --finding_id <FINDING_ID>
 python3 replay.py --audit
 ```
 
-### 5. Run on a real disk image
+---
+
+### 5. Run on a real disk image (SIFT workflow)
 
 ```bash
-# Mount E01 (SIFT Workstation)
-sudo ewfmount /path/to/image.E01 /mnt/ewf
-sudo mount -t ntfs-3g -o ro,noatime,loop,offset=1048576 /mnt/ewf/ewf1 /mnt/windows_c
-
-# Investigate
-sudo -E env "PATH=$PATH" venv/bin/python3 run_investigation.py \
-  --image /mnt/windows_c --type windows_compromise --fresh
+# Example mounted evidence (SIFT Workstation)
+ls /media
+# sf_Anti-Forensics_Case sf_Encrypt_it_all sf_HACKATHON-2026 sf_ROCBA sf_VANKO sf_memdump ...
 ```
+
+```bash
+export CASE="/media/sf_Encrypt_it_all/AF-Case2.E01"
+
+sudo -E env "PATH=$PATH" venv/bin/python3 run_investigation.py \
+  --image "$CASE" \
+  --type windows_compromise \
+  --fresh
+```
+
+---
 
 ### 6. Run on a memory dump
 
 ```bash
-python3 run_investigation.py --image /path/to/memory.raw --fresh
+python3 run_investigation.py --image /path/to/memory.raw --type memory_analysis --fresh
 ```
+
 
 ### 7. Archive a case
 
@@ -373,6 +534,7 @@ sift-proof/
 ├── LICENSE                               ← MIT License
 ├── README.md                             ← This file
 ├── requirements.txt
+├── SIFT-PROOF.png                        ← Architecture Diagram 
 ├── Dataset_Documentation.md              
 ├── Accuracy_Report.md
 ├── run_investigation.py                  ← Main entry point
