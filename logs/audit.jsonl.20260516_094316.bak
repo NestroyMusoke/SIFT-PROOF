@@ -1,0 +1,8 @@
+{"type": "start", "timestamp": "2026-05-16T09:34:34.300920", "case": {"image_path": "TEST_MODE", "case_type": "windows_compromise"}}
+{"type": "tool_call", "timestamp": "2026-05-16T09:34:34.910006", "tool": "get_mft_timeline", "params": {"image_path": "TEST_MODE"}, "result_summary": {"error": "Image not found: TEST_MODE"}}
+{"type": "tool_call", "timestamp": "2026-05-16T09:34:35.593646", "tool": "get_mft_timeline", "params": {"image_path": "TEST_MODE"}, "result_summary": {"error": "Image not found: TEST_MODE"}}
+{"type": "tool_call", "timestamp": "2026-05-16T09:34:36.320585", "tool": "get_amcache", "params": {"image_path": "TEST_MODE"}, "result_summary": {"error": "Image not found: TEST_MODE"}}
+{"type": "tool_call", "timestamp": "2026-05-16T09:34:54.246518", "tool": "get_prefetch", "params": {"image_path": "TEST_MODE"}, "result_summary": {"error": "Image not found: TEST_MODE"}}
+{"type": "tool_call", "timestamp": "2026-05-16T09:35:21.661967", "tool": "get_evtx_events", "params": {"image_path": "TEST_MODE"}, "result_summary": {"error": "Image not found: TEST_MODE"}}
+{"type": "tool_call", "timestamp": "2026-05-16T09:35:23.212221", "tool": "get_registry_runkeys", "params": {"image_path": "TEST_MODE"}, "result_summary": {"error": "Image not found: TEST_MODE"}}
+{"type": "complete", "timestamp": "2026-05-16T09:35:24.934818", "summary": {"total_findings": 0, "coverage": 100}}

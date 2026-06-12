@@ -8,9 +8,7 @@ data/*.db
 *.db
 
 
-logs/*.jsonl
-logs/*.log
-logs/*.bak
+
 
 
 # Runtime investigation checkpoint — regenerated per run, must never be committed
