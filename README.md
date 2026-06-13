@@ -74,7 +74,7 @@ The innovation in SIFT-PROOF is not that these ideas are new in the literature. 
 | 3 | README with setup instructions | ✅ | This file |
 | 4 | Step-by-step try-it-out instructions | ✅ | [Quick Start](#-quick-start-3-minutes) |
 | 5 | Text description of features | ✅ | [What SIFT-PROOF Does](#what-sift-proof-does) |
-| 6 | Demonstration video | ✅ | [`docs/demo_video_link.md`](docs/demo_video_link.md) |
+| 6 | Demonstration video | ✅ | [`demo_video_link`](https://youtu.be/VNw_n-5xphs?si=EL_8FEfH0Ed-NvOD) |
 | 7 | Architecture diagram | ✅ | [`SIFT-PROOF.png`](SIFT-PROOF.png) |
 | 8 | Evidence dataset documentation | ✅ | [`Dataset_Documentation.md`](Dataset_Documentation.md) |
 | 9 | Accuracy report | ✅ | [`Accuracy_Report.md`](Accuracy_Report.md) |
