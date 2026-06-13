@@ -21,8 +21,8 @@ def main():
                         help='Run with pre-loaded test data (no image needed)')
     parser.add_argument('--backend', choices=['groq', 'ollama', 'anthropic'],
                         help='Override AI backend')
-    parser.add_argument('--max-iter', type=int, default=25,
-                        help='Maximum agent iterations (default: 25)')
+    parser.add_argument('--max-iter', type=int, default=50,
+                        help='Maximum agent iterations (default: 50)')
     parser.add_argument('--report', help='Save final report to JSON file')
     parser.add_argument('--fresh', action='store_true',
                         help='Ignore saved checkpoint and start fresh')
